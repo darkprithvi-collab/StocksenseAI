@@ -7,7 +7,7 @@
       "password": "password123",
       "role": "Lead Quantitative Researcher",
       "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
-      "token": "stocksense_jwt_secure_session_token_2026",
+      "token": "token_1794981317468_sc8ry5i",
       "createdAt": "2026-11-04T10:00:00.000Z"
     },
     {
@@ -67,6 +67,6 @@
     "system": "StockSense AI Ledger Engine",
     "version": "1.0.0",
     "storage": "Local JSON Ledger",
-    "lastUpdated": "2026-11-17T06:49:14.357Z"
+    "lastUpdated": "2026-11-18T05:55:17.468Z"
   }
 }
