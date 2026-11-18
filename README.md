@@ -6,138 +6,228 @@
 [![AI Engine](https://img.shields.io/badge/Intelligence-Gemini%201.5%20Pro%20Copilot-8B5CF6.svg)](https://deepmind.google/technologies/gemini/)
 [![Storage](https://img.shields.io/badge/Storage-Persistent%20JSON%20Ledger-amber.svg)](./server/database.json)
 
-StockSense AI is an institutional-grade quantitative stock analysis and virtual paper-trading platform designed for financial analysts, active traders, and academic presentations. It integrates multi-timeframe technical indicator calculations (RSI, MACD, Moving Averages), discounted cash flow (DCF) intrinsic valuation, and conversational quantitative analysis powered by Google DeepMind Gemini models.
+An institutional-grade quantitative stock analysis and virtual paper-trading platform featuring real-time technical indicators (RSI, MACD, Bollinger Bands), DCF intrinsic valuation, AI-powered sentiment analysis, and a Gemini conversational copilot.
 
 ---
 
-## 🚀 Key Highlights & Architectural Features
+## 📂 Complete Project Structure — Organized by Layer
 
-1. **Decoupled Client-Server Architecture**:
-   - **Frontend**: High-speed Single Page Application powered by React 18, Vite, TypeScript, Lucide Icons, and Tailwind CSS running on `http://localhost:5173`.
-   - **Backend**: Express REST API running on `http://localhost:5000` with dual IPv4 (`127.0.0.1`) and IPv6 (`::1`) socket binding.
-   - **Persistence**: Server ledger (`server/database.json`) for user authentication, live transactions, holdings, and watchlists.
-
-2. **Real-Time Technical & Quantitative Analysis**:
-   - Dynamic RSI, MACD divergence detection, 50-day / 200-day Golden / Death Cross monitors.
-   - Institutional Valuation models (DCF fair value calculation, margin of safety, Beta, P/E ratio, PEG).
-   - Multi-asset coverage spanning US Equities (NVDA, AAPL, MSFT, GOOGL, TSLA, AMZN) and Indian Bluechips (NSE RELIANCE, TATAMOTORS).
-
-3. **Gemini 1.5 Conversational Copilot**:
-   - Multi-topic conversational engine capable of answering technical questions (RSI vs MACD, Stop-Loss rules, Intrinsic Value calculations, macro interest rates, long-term vs swing strategies).
-   - Real-time thinking animation, structured Buy/Hold/Sell breakdowns, and customized analyst prompts.
-
-4. **$10,000 Virtual Trading Simulator**:
-   - Zero-risk paper trading environment with instant order execution.
-   - Live P&L calculations, average buy price recalculation, and persistent transaction audit logs saved to the server.
-
-5. **Client-Server Authentication**:
-   - Strict password verification (401 Unauthorized for incorrect passwords, 404 for unregistered emails, 409 for duplicate registration).
-   - Editable user profiles (Name, Role, Avatar) synchronized directly into `server/database.json`.
+```
+StocksenseAI/
+│
+├─── 🎨 FRONTEND (React + TypeScript + Vite)
+│    │
+│    ├── src/
+│    │   │
+│    │   ├── main.tsx                          # ⚡ App entry point — mounts React root
+│    │   ├── App.tsx                           # 🏗️  Root layout — routes tabs to views
+│    │   ├── index.css                         # 🎨 Global styles + Tailwind directives
+│    │   ├── vite-env.d.ts                     # 📝 Vite environment type declarations
+│    │   │
+│    │   ├── types/
+│    │   │   └── index.ts                      # 📋 All TypeScript interfaces & types
+│    │   │                                     #    (Stock, User, AIInsights, ActiveTab,
+│    │   │                                     #     Portfolio, Transaction, etc.)
+│    │   │
+│    │   ├── data/
+│    │   │   └── mockStocks.ts                 # 📊 Stock universe data (17 stocks)
+│    │   │                                     #    US: NVDA, AAPL, TSLA, MSFT, GOOGL
+│    │   │                                     #    India: RELIANCE, TATAMOTORS
+│    │   │                                     #    + Market indices (S&P, NIFTY, BTC)
+│    │   │                                     #    + generateChartData() helper
+│    │   │
+│    │   ├── context/
+│    │   │   └── StockContext.tsx               # 🧠 Central state management
+│    │   │                                     #    - Auth (login/signup/forgot password)
+│    │   │                                     #    - Live price tick simulation
+│    │   │                                     #    - Watchlist & portfolio state
+│    │   │                                     #    - Trade execution logic
+│    │   │                                     #    - Notification system
+│    │   │
+│    │   ├── services/
+│    │   │   ├── api.ts                        # 🌐 HTTP API client layer
+│    │   │   │                                 #    apiLogin, apiSignup, apiForgotPassword,
+│    │   │   │                                 #    apiResetPassword, apiBuyStock, apiSellStock
+│    │   │   │                                 #    + safeFetchJson error handler
+│    │   │   │
+│    │   │   └── geminiCopilot.ts              # 🤖 Gemini AI knowledge engine
+│    │   │                                     #    Multi-topic financial Q&A
+│    │   │
+│    │   └── components/
+│    │       │
+│    │       ├── auth/
+│    │       │   └── AuthScreen.tsx             # 🔐 Login / Sign Up / Forgot Password
+│    │       │                                 #    - Email + password login
+│    │       │                                 #    - OTP via email for password reset
+│    │       │                                 #    - Quick Launch demo access
+│    │       │
+│    │       ├── layout/
+│    │       │   ├── Sidebar.tsx                # 📌 Fixed left navigation sidebar
+│    │       │   ├── Header.tsx                 # 🔍 Top bar with search & user info
+│    │       │   └── MarketTicker.tsx           # 📈 Live scrolling market indices ticker
+│    │       │
+│    │       ├── dashboard/
+│    │       │   ├── DashboardView.tsx          # 🏠 Main dashboard — overview of all data
+│    │       │   ├── MarketOverview.tsx         # 📊 Market indices cards
+│    │       │   ├── InteractiveMainChart.tsx   # 📉 Large interactive stock chart
+│    │       │   ├── TopAIPicks.tsx             # 🏆 AI-recommended top stock picks
+│    │       │   ├── HotMovers.tsx             # 🔥 Biggest gainers & losers
+│    │       │   └── MarketSentimentGauge.tsx   # 🎯 Overall market mood indicator
+│    │       │
+│    │       ├── analysis/
+│    │       │   ├── StockAnalysisView.tsx      # 🔬 Deep stock analysis page
+│    │       │   │                             #    RSI, MACD, Bollinger, EMA charts
+│    │       │   │                             #    AI insights, catalysts, risks
+│    │       │   └── GeminiAIReport.tsx         # 💬 Interactive AI copilot chat
+│    │       │                                 #    Ask anything about stocks
+│    │       │
+│    │       ├── watchlist/
+│    │       │   └── WatchlistView.tsx          # ⭐ Tracked stocks with live prices
+│    │       │
+│    │       ├── portfolio/
+│    │       │   └── PortfolioView.tsx          # 💼 Virtual portfolio & trade history
+│    │       │                                 #    $10,000 paper trading simulator
+│    │       │
+│    │       ├── news/
+│    │       │   └── NewsSentimentView.tsx      # 📰 AI-scored news sentiment feed
+│    │       │
+│    │       └── common/
+│    │           ├── TradeModal.tsx             # 💱 Buy/Sell order execution modal
+│    │           ├── ProfileModal.tsx           # 👤 Edit profile (name, role, avatar)
+│    │           └── Toast.tsx                  # 🔔 Toast notification system
+│    │
+│    └── index.html                            # 📄 HTML shell for Vite SPA
+│
+│
+├─── ⚙️ BACKEND (Node.js + Express REST API)
+│    │
+│    ├── server/
+│    │   ├── server.js                         # 🚀 Express server — Port 5000
+│    │   │                                     #    All REST API route handlers
+│    │   │                                     #    Dual IPv4/IPv6 binding
+│    │   │                                     #    Serves static dist/ in production
+│    │   │
+│    │   ├── db.js                             # 🗄️  Database CRUD operations
+│    │   │                                     #    verifyUserLogin, registerUser,
+│    │   │                                     #    updateUserPassword, getPortfolioData,
+│    │   │                                     #    executeStockBuy, executeStockSell
+│    │   │
+│    │   ├── mailer.js                         # 📧 Email service (Resend API)
+│    │   │                                     #    Password reset OTP delivery
+│    │   │                                     #    Beautiful dark-theme HTML emails
+│    │   │
+│    │   ├── .env                              # 🔑 Environment secrets (NOT in git)
+│    │   │                                     #    RESEND_API_KEY=re_xxxxx
+│    │   │
+│    │   └── package.json                      # 📦 Server dependencies
+│    │
+│    └── 🗃️ DATABASE
+│        └── server/database.json              # 💾 Persistent JSON file database
+│                                              #    Users, portfolios, transactions,
+│                                              #    watchlists — all persisted to disk
+│
+│
+├─── 📡 REST API ENDPOINTS
+│    │
+│    │  AUTHENTICATION
+│    │  ├── POST /api/auth/login               # Sign in with email + password
+│    │  ├── POST /api/auth/signup              # Register new account
+│    │  ├── POST /api/auth/forgot-password     # Send OTP to email
+│    │  └── POST /api/auth/reset-password      # Verify OTP & set new password
+│    │
+│    │  PORTFOLIO & TRADING
+│    │  ├── GET  /api/portfolio/holdings        # Get cash, holdings, transactions
+│    │  ├── POST /api/portfolio/buy             # Execute virtual buy order
+│    │  ├── POST /api/portfolio/sell            # Execute virtual sell order
+│    │  └── POST /api/portfolio/reset           # Reset to $10,000 starting cash
+│    │
+│    │  USER MANAGEMENT
+│    │  ├── GET  /api/users                     # List all registered users
+│    │  └── PUT  /api/auth/profile              # Update name, role, avatar
+│    │
+│    │  SYSTEM
+│    │  └── GET  /api/health                    # Server health check
+│    │
+│
+├─── 🛠️ BUILD & CONFIG
+│    ├── package.json                          # Frontend + shared dependencies
+│    ├── package-lock.json                     # Dependency lock file
+│    ├── tsconfig.json                         # TypeScript compiler config
+│    ├── tsconfig.node.json                    # TypeScript config for Node
+│    ├── vite.config.ts                        # Vite build configuration
+│    ├── tailwind.config.js                    # Tailwind CSS theme & colors
+│    ├── postcss.config.js                     # PostCSS plugin config
+│    └── .gitignore                            # Git ignore rules
+│
+│
+└─── 🚀 DEPLOYMENT
+     ├── vercel.json                           # Vercel SPA deployment config
+     └── railway.json                          # Railway backend deployment config
+```
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Client**: React 18, Vite 5, TypeScript 5, Tailwind CSS 3, Lucide React, Canvas Confetti
-- **Server**: Node.js, Express 4, CORS
-- **Database**: Persistent JSON File Ledger (`server/database.json`)
-- **APIs**: RESTful JSON API (`/api/auth`, `/api/portfolio`, `/api/users`, `/api/health`)
+| Layer | Technologies |
+|:---|:---|
+| **Frontend** | React 18, Vite 5, TypeScript 5, Tailwind CSS 3, Recharts, Lucide React |
+| **Backend** | Node.js, Express 4, CORS, Resend API, Nodemailer |
+| **Database** | Persistent JSON File Ledger (`server/database.json`) |
+| **AI Engine** | Google Gemini 1.5 Pro — conversational copilot & analysis |
+| **Deployment** | Vercel (frontend), Railway (backend), GitHub (source control) |
 
 ---
 
-## 📦 Project Structure
+## ⚡ Quick Start
 
+### 1. Clone & Install
 ```bash
-StocksenseAI/
-├── public/                # Static public assets
-├── src/
-│   ├── components/
-│   │   ├── analysis/      # Quantitative chart, technical breakdown, Gemini copilot
-│   │   ├── auth/          # Authentication screen with password validation & quick demo
-│   │   ├── common/        # Trade modal, profile modal, toast notifications
-│   │   ├── dashboard/     # Market overview, top gainers, quick stats
-│   │   ├── layout/        # Sidebar navigation, top header, market ticker marquee
-│   │   ├── news/          # Financial news sentiment analyzer
-│   │   ├── portfolio/     # Virtual paper trading balance, holdings & order history
-│   │   └── watchlist/     # Real-time stock watchlist
-│   ├── context/           # StockContext state management
-│   ├── services/          # HTTP API client and Gemini Copilot knowledge engine
-│   ├── types/             # TypeScript data contracts
-│   ├── App.tsx            # Root application layout
-│   └── main.tsx           # Entrypoint
-├── server/
-│   ├── database.json      # Persistent disk database ledger
-│   ├── db.js              # Database CRUD operations and ledger mutations
-│   ├── package.json       # Express server dependencies
-│   └── server.js          # REST API endpoints & IPv4/IPv6 listener
-├── .gitignore
-├── package.json           # Frontend dependencies
-├── tsconfig.json          # TypeScript configuration
-├── vite.config.ts         # Vite build configuration
-└── README.md
-```
-
----
-
-## ⚡ Quick Start Guide
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/<your-username>/StocksenseAI.git
+git clone https://github.com/darkprithvi-collab/StocksenseAI.git
 cd StocksenseAI
-```
-
-### 2. Install Dependencies
-```bash
-# Install frontend dependencies
 npm install
-
-# Install backend dependencies
 cd server && npm install && cd ..
 ```
 
-### 3. Start Backend Server (Port 5000)
+### 2. Start Backend (Port 5000)
 ```bash
 node server/server.js
-# Output: [StockSense Server] REST API active on http://127.0.0.1:5000 and [::1]:5000
 ```
 
-### 4. Start Frontend Terminal (Port 5173)
+### 3. Start Frontend (Port 5173)
 ```bash
 npm run dev
-# Terminal ready at http://localhost:5173/
+```
+
+### 4. Open in Browser
+```
+http://localhost:5173/
 ```
 
 ---
 
-## 🔑 Default Credentials & Test Accounts
+## 🔑 Test Accounts
 
-You can log in using either the pre-seeded accounts or create your own personal account:
+| Email | Password | Role |
+|:---|:---|:---|
+| `alex.vance@stocksense.ai` | `password123` | Lead Quantitative Researcher |
+| `darkprithvi@gmail.com` | `password123` | Quantitative Analyst |
 
-| Account Name | Email | Password | Role |
-| :--- | :--- | :--- | :--- |
-| **Lead Analyst (Default)** | `alex.vance@stocksense.ai` | `password123` | Lead Quantitative Researcher |
-| **Personal Account** | `darkprithvi@gmail.com` | `password123` | Quantitative Analyst & Portfolio Manager |
-
-> **Note**: You can also click the **"Quick Launch"** or **"Fill Demo Credentials"** button on the Sign-In screen for instant one-click access.
+> Click **"Quick Launch"** on the login screen for instant demo access.
 
 ---
 
-## 📡 REST API Reference
+## 🎨 Design Theme
 
-| Endpoint | Method | Description |
-| :--- | :--- | :--- |
-| `/api/health` | `GET` | Health check and server status |
-| `/api/users` | `GET` | Retrieve list of registered users |
-| `/api/auth/login` | `POST` | Authenticate user with email and password |
-| `/api/auth/signup` | `POST` | Register a new user into `database.json` |
-| `/api/auth/profile` | `PUT` | Update user name, role, and avatar |
-| `/api/portfolio/holdings` | `GET` | Get cash balance, holdings, and transactions |
-| `/api/portfolio/buy` | `POST` | Execute virtual market buy order |
-| `/api/portfolio/sell` | `POST` | Execute virtual market sell order |
-| `/api/portfolio/reset` | `POST` | Reset paper trading account to $10,000 cash |
+- **Background**: `#0B0F19` (deep dark)
+- **Positive/Green**: `#10b981` (emerald)
+- **Negative/Red**: `#ef4444` (crimson)
+- **Accent/Blue**: `#3b82f6` (brand blue)
 
 ---
 
 ## 📄 License
-MIT License. Built for academic, demonstration, and quantitative research purposes.
+
+MIT License. Built for academic demonstration and quantitative research purposes.
+
+**Team**: Prithviraj (Full-Stack Lead) | Field Project 2026
