@@ -155,22 +155,17 @@ export async function checkServerHealth(): Promise<boolean> {
 }
 
 /**
- * POST /api/auth/send-otp
- * Dispatches a 6-digit OTP code to the user's email address for Two-Factor Authentication
+ * POST /api/auth/forgot-password
+ * Request a 6-digit OTP to reset account password
  */
-export async function apiSendOtp(payload: {
-  email: string;
-  password?: string;
-  isLogin: boolean;
-  name?: string;
-}): Promise<{ success: boolean; message: string; otp?: string; expiresIn?: number }> {
-  const normEmail = (payload.email || '').trim().toLowerCase();
+export async function apiForgotPassword(email: string): Promise<{ success: boolean; message: string }> {
+  const normEmail = (email || '').trim().toLowerCase();
 
   // 1. Attempt Server Request First
-  const res = await safeFetchJson<any>(`${API_BASE_URL}/auth/send-otp`, {
+  const res = await safeFetchJson<any>(`${API_BASE_URL}/auth/forgot-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...payload, email: normEmail })
+    body: JSON.stringify({ email: normEmail })
   });
 
   if (res.data && typeof res.data === 'object' && 'success' in res.data) {
@@ -179,60 +174,42 @@ export async function apiSendOtp(payload: {
 
   // 2. Client-side fallback for Vercel / offline mode
   const users = getLocalUsers();
-  if (payload.isLogin) {
-    const found = users.find(u => u.email.toLowerCase() === normEmail);
-    if (!found) {
-      return { 
-        success: false, 
-        message: `No account found for "${normEmail}". Please click "Create Account" to register.` 
-      };
-    }
-    if (found.password && payload.password && found.password !== payload.password.trim()) {
-      return { 
-        success: false, 
-        message: `Incorrect password entered for "${normEmail}". Please try again.` 
-      };
-    }
-  } else {
-    const exists = users.find(u => u.email.toLowerCase() === normEmail);
-    if (exists) {
-      return { 
-        success: false, 
-        message: `An account with email "${normEmail}" already exists. Please switch to Sign In.` 
-      };
-    }
+  const found = users.find(u => u.email.toLowerCase() === normEmail);
+  if (!found) {
+    return {
+      success: false,
+      message: `No account found with email "${normEmail}". Please check your email or create an account.`
+    };
   }
 
   const mockOtp = Math.floor(100000 + Math.random() * 900000).toString();
   try {
-    sessionStorage.setItem('stocksense_temp_otp_' + normEmail, JSON.stringify({
+    sessionStorage.setItem('stocksense_reset_otp_' + normEmail, JSON.stringify({
       otp: mockOtp,
-      expiresAt: Date.now() + 5 * 60 * 1000,
-      ...payload
+      expiresAt: Date.now() + 10 * 60 * 1000
     }));
   } catch (e) {}
 
   return {
     success: true,
-    message: `A 6-digit verification code has been dispatched to ${normEmail}`,
-    otp: mockOtp,
-    expiresIn: 300
+    message: `A 6-digit password reset code has been sent to ${normEmail}. Please check your inbox or spam folder.`
   };
 }
 
 /**
- * POST /api/auth/verify-otp
- * Verifies the submitted 6-digit OTP code and logs the user in
+ * POST /api/auth/reset-password
+ * Reset password using the verified 6-digit OTP code
  */
-export async function apiVerifyOtp(email: string, otp: string): Promise<{ success: boolean; user?: ServerUser; message?: string }> {
+export async function apiResetPassword(email: string, otp: string, newPassword: string): Promise<{ success: boolean; user?: ServerUser; message: string }> {
   const normEmail = (email || '').trim().toLowerCase();
   const inputOtp = (otp || '').trim();
+  const inputPass = (newPassword || '').trim();
 
   // 1. Attempt Server Request First
-  const res = await safeFetchJson<any>(`${API_BASE_URL}/auth/verify-otp`, {
+  const res = await safeFetchJson<any>(`${API_BASE_URL}/auth/reset-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: normEmail, otp: inputOtp })
+    body: JSON.stringify({ email: normEmail, otp: inputOtp, newPassword: inputPass })
   });
 
   if (res.data && typeof res.data === 'object' && 'success' in res.data) {
@@ -242,30 +219,37 @@ export async function apiVerifyOtp(email: string, otp: string): Promise<{ succes
   // 2. Client-side fallback
   let raw: string | null = null;
   try {
-    raw = sessionStorage.getItem('stocksense_temp_otp_' + normEmail);
+    raw = sessionStorage.getItem('stocksense_reset_otp_' + normEmail);
   } catch (e) {}
 
   if (!raw) {
-    return { success: false, message: 'No active OTP request found. Please request a new code.' };
+    return { success: false, message: 'No active password reset request found. Please request a new code.' };
   }
 
   const record = JSON.parse(raw);
   if (Date.now() > record.expiresAt) {
-    try { sessionStorage.removeItem('stocksense_temp_otp_' + normEmail); } catch (e) {}
-    return { success: false, message: 'OTP code has expired. Please request a new code.' };
+    try { sessionStorage.removeItem('stocksense_reset_otp_' + normEmail); } catch (e) {}
+    return { success: false, message: 'Password reset code has expired. Please request a new one.' };
   }
 
   if (record.otp !== inputOtp) {
-    return { success: false, message: 'Incorrect OTP code entered. Please check and try again.' };
+    return { success: false, message: 'Incorrect OTP code entered. Please check your email and try again.' };
   }
 
-  try { sessionStorage.removeItem('stocksense_temp_otp_' + normEmail); } catch (e) {}
+  try { sessionStorage.removeItem('stocksense_reset_otp_' + normEmail); } catch (e) {}
 
-  if (record.isLogin) {
-    return apiLogin(normEmail, record.password);
-  } else {
-    return apiSignup(record.name || 'Trader', normEmail, record.password);
+  // Update in local ledger
+  const users = getLocalUsers();
+  const user = users.find(u => u.email.toLowerCase() === normEmail);
+  if (user) {
+    user.password = inputPass;
+    saveLocalUsers(users);
   }
+
+  return {
+    success: true,
+    message: 'Your password has been successfully reset! You can now log in.'
+  };
 }
 
 /**

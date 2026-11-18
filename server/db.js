@@ -165,6 +165,34 @@ export function verifyUserLogin(email, password) {
 }
 
 /**
+ * Update user password after OTP verification
+ */
+export function updateUserPassword(email, newPassword) {
+  const db = readDatabase();
+  const normalizedEmail = (email || '').toLowerCase().trim();
+  const user = db.users.find(u => u.email.toLowerCase() === normalizedEmail);
+
+  if (!user) {
+    const err = new Error(`No account found for "${email}".`);
+    err.status = 404;
+    throw err;
+  }
+
+  if (!newPassword || newPassword.trim().length < 4) {
+    const err = new Error('New password must be at least 4 characters long.');
+    err.status = 400;
+    throw err;
+  }
+
+  user.password = newPassword.trim();
+  user.token = `token_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  writeDatabase(db);
+
+  const { password: _, ...safeUser } = user;
+  return safeUser;
+}
+
+/**
  * Register a new user with name, email & password
  */
 export function registerUser(name, email, password) {

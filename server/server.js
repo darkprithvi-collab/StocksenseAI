@@ -9,11 +9,13 @@ import {
   verifyUserLogin,
   registerUser,
   updateUserProfile,
+  updateUserPassword,
   getPortfolioData, 
   executeStockBuy, 
   executeStockSell, 
   resetPortfolioState 
 } from './db.js';
+import { sendPasswordResetEmail } from './mailer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -134,129 +136,120 @@ app.post('/api/auth/signup', (req, res) => {
   }
 });
 
-// In-memory 2FA OTP Store with 5-minute TTL
-const otpStore = new Map();
+// In-memory Password Reset OTP Store with 10-minute TTL
+const resetOtpStore = new Map();
 
 /* ==========================================================================
-   2c. Send 2FA Email OTP Endpoint (POST /api/auth/send-otp)
+   2c. Forgot Password - Send OTP to Email (POST /api/auth/forgot-password)
    ========================================================================== */
-app.post('/api/auth/send-otp', (req, res) => {
+app.post('/api/auth/forgot-password', async (req, res) => {
   try {
-    const { email, password, isLogin, name } = req.body;
+    const { email } = req.body;
     const normalizedEmail = (email || '').toLowerCase().trim();
 
     if (!normalizedEmail || !normalizedEmail.includes('@')) {
-      return res.status(400).json({ success: false, message: 'Valid email address is required.' });
+      return res.status(400).json({ success: false, message: 'Please enter a valid email address.' });
     }
 
-    if (isLogin) {
-      // Validate credentials before issuing OTP
-      verifyUserLogin(normalizedEmail, password);
-    } else {
-      // Validate account does not already exist
-      const db = readDatabase();
-      const existing = db.users?.find(u => u.email.toLowerCase() === normalizedEmail);
-      if (existing) {
-        return res.status(409).json({ 
-          success: false, 
-          message: `An account with email "${normalizedEmail}" already exists. Please switch to Sign In.` 
-        });
-      }
+    const db = readDatabase();
+    const user = db.users?.find(u => u.email.toLowerCase() === normalizedEmail);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: `No account found with email "${normalizedEmail}". Please check your email or create an account.`
+      });
     }
 
     // Generate cryptographic 6-digit OTP code
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
 
-    otpStore.set(normalizedEmail, {
+    resetOtpStore.set(normalizedEmail, {
       otp,
       expiresAt,
-      isLogin,
-      name,
-      password
+      email: normalizedEmail
     });
 
-    console.log(`
-  ==============================================================
-  🔐 [2FA SECURITY DISPATCH]
-  📧 Recipient: ${normalizedEmail}
-  🔑 6-Digit Verification OTP: ${otp}
-  ⏱️ Expiry: 5 Minutes (Expires at ${new Date(expiresAt).toLocaleTimeString()})
-  ==============================================================
-    `);
+    // Send real email via mailer
+    await sendPasswordResetEmail(normalizedEmail, otp);
 
     return res.status(200).json({
       success: true,
-      message: `A 6-digit security verification code has been dispatched to ${normalizedEmail}`,
-      otp: otp, // Provided for live viva demonstration
-      expiresIn: 300
+      message: `A 6-digit password reset code has been dispatched to ${normalizedEmail}. Please check your inbox.`
     });
   } catch (error) {
-    console.warn('[OTP Warning]', error.message);
-    return res.status(error.status || 400).json({
+    console.error('[Forgot Password Error]', error.message);
+    return res.status(error.status || 500).json({
       success: false,
-      message: error.message || 'Failed to dispatch verification code'
+      message: error.message || 'Failed to dispatch password reset code.'
     });
   }
 });
 
 /* ==========================================================================
-   2d. Verify 2FA OTP Endpoint (POST /api/auth/verify-otp)
+   2d. Reset Password with OTP (POST /api/auth/reset-password)
    ========================================================================== */
-app.post('/api/auth/verify-otp', (req, res) => {
+app.post('/api/auth/reset-password', (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const { email, otp, newPassword } = req.body;
     const normalizedEmail = (email || '').toLowerCase().trim();
     const inputOtp = (otp || '').trim();
+    const inputPass = (newPassword || '').trim();
 
-    if (!normalizedEmail || !inputOtp) {
-      return res.status(400).json({ success: false, message: 'Email and 6-digit OTP code are required.' });
+    if (!normalizedEmail || !inputOtp || !inputPass) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Email, OTP code, and new password are all required.' 
+      });
     }
 
-    const record = otpStore.get(normalizedEmail);
+    const record = resetOtpStore.get(normalizedEmail);
     if (!record) {
-      return res.status(400).json({ success: false, message: 'No active OTP request found. Please request a new code.' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No active password reset request found. Please request a new code.' 
+      });
     }
 
     if (Date.now() > record.expiresAt) {
-      otpStore.delete(normalizedEmail);
-      return res.status(400).json({ success: false, message: 'OTP code has expired. Please request a new one.' });
+      resetOtpStore.delete(normalizedEmail);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Password reset code has expired. Please request a new one.' 
+      });
     }
 
     if (record.otp !== inputOtp) {
-      return res.status(401).json({ success: false, message: 'Incorrect OTP code entered. Please check and try again.' });
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Incorrect OTP code entered. Please check your email and try again.' 
+      });
     }
 
-    // OTP Verified! Complete login or account creation
-    otpStore.delete(normalizedEmail);
+    // OTP Verified! Update user password in database.json
+    resetOtpStore.delete(normalizedEmail);
+    const updatedUser = updateUserPassword(normalizedEmail, inputPass);
 
-    let user;
-    if (record.isLogin) {
-      user = verifyUserLogin(normalizedEmail, record.password);
-    } else {
-      user = registerUser(record.name, normalizedEmail, record.password);
-    }
-
-    console.log(`[2FA Security] ✅ 6-Digit OTP Verified for: ${normalizedEmail}`);
+    console.log(`[Password Reset] ✅ Password successfully updated for: ${normalizedEmail}`);
 
     return res.status(200).json({
       success: true,
-      message: '2FA authentication verified successfully',
+      message: 'Your password has been successfully reset! You can now log in.',
       user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        avatar: user.avatar,
-        token: user.token,
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        avatar: updatedUser.avatar,
+        token: updatedUser.token,
         isLoggedIn: true
       }
     });
   } catch (error) {
-    console.warn('[OTP Verification Error]', error.message);
+    console.error('[Reset Password Error]', error.message);
     return res.status(error.status || 400).json({
       success: false,
-      message: error.message || 'OTP verification failed'
+      message: error.message || 'Failed to reset password.'
     });
   }
 });

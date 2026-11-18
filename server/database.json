@@ -17,7 +17,7 @@
       "password": "password123",
       "role": "Quantitative Analyst & Portfolio Manager",
       "avatar": "https://ui-avatars.com/api/?name=Prithviraj&background=3b82f6&color=fff&bold=true",
-      "token": "token_1794988794962_8eh6llr",
+      "token": "token_1794989594317_zocwowa",
       "createdAt": "2026-11-14T06:21:18.215Z"
     }
   ],
@@ -67,6 +67,6 @@
     "system": "StockSense AI Ledger Engine",
     "version": "1.0.0",
     "storage": "Local JSON Ledger",
-    "lastUpdated": "2026-11-18T07:59:54.962Z"
+    "lastUpdated": "2026-11-18T08:13:14.317Z"
   }
 }
