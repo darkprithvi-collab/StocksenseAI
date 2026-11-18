@@ -14,10 +14,10 @@
       "id": "usr_1794637278214",
       "name": "Prithviraj",
       "email": "darkprithvi@gmail.com",
-      "password": "password123",
+      "password": "IAMATOMIC",
       "role": "Quantitative Analyst & Portfolio Manager",
       "avatar": "https://ui-avatars.com/api/?name=Prithviraj&background=3b82f6&color=fff&bold=true",
-      "token": "token_1794989594317_zocwowa",
+      "token": "token_1794991206948_43w7bt7",
       "createdAt": "2026-11-14T06:21:18.215Z"
     }
   ],
@@ -67,6 +67,6 @@
     "system": "StockSense AI Ledger Engine",
     "version": "1.0.0",
     "storage": "Local JSON Ledger",
-    "lastUpdated": "2026-11-18T08:13:14.317Z"
+    "lastUpdated": "2026-11-18T08:40:06.948Z"
   }
 }

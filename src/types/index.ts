@@ -108,6 +108,7 @@ export interface Stock {
   sparkline: number[];
   chartData: Record<TimeFrame, ChartDataPoint[]>;
   aiInsights: AIInsights;
+  lastTickDirection?: 'UP' | 'DOWN' | 'STABLE';
 }
 
 export interface MarketIndex {
