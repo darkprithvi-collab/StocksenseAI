@@ -1,9 +1,25 @@
 /**
  * StockSense AI Client-Server HTTP API Client
- * Connects React Frontend to Express Backend Server (Port 5000)
+ * Dynamically resolves API URL:
+ * - VITE_API_URL env var if specified (e.g. Vercel -> Render backend)
+ * - http://localhost:5000/api in local development
+ * - Relative /api if unified single-origin deployment
  */
+const getBaseApiUrl = (): string => {
+  if (import.meta.env.VITE_API_URL) {
+    return `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api`;
+  }
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:5000/api';
+    }
+    return '/api';
+  }
+  return 'http://localhost:5000/api';
+};
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = getBaseApiUrl();
 
 export interface ServerUser {
   id: string;

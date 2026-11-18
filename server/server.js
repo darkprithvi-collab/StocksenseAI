@@ -1,6 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { 
   readDatabase, 
   verifyUserLogin,
@@ -11,6 +14,10 @@ import {
   executeStockSell, 
   resetPortfolioState 
 } from './db.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.resolve(__dirname, '../dist');
 
 const app = express();
 const PORT = parseInt(process.env.PORT, 10) || 5000;
@@ -270,10 +277,40 @@ app.post('/api/portfolio/reset', (req, res) => {
   }
 });
 
-// Dual listener: bind to both 127.0.0.1 and ::1 so both localhost and IP work seamlessly on macOS
-const serverIPv4 = http.createServer(app);
-serverIPv4.listen(PORT, '127.0.0.1', () => {
-  console.log(`
+/* ==========================================================================
+   7. Production Static Asset Serving (Frontend Dist)
+   ========================================================================== */
+if (fs.existsSync(distPath)) {
+  console.log(`[Static Serving] Serving production frontend bundle from: ${distPath}`);
+  app.use(express.static(distPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
+
+/* ==========================================================================
+   8. Server Listener (Cloud-aware & Local macOS-compatible)
+   ========================================================================== */
+if (process.env.PORT) {
+  // Production / Cloud host (Render, Railway, Heroku, Fly.io, etc.)
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`
+  ==============================================================
+  🚀 StockSense AI Cloud Terminal Active
+  📡 Public Port: ${PORT} (0.0.0.0)
+  💾 Database Ledger: server/database.json
+  🌍 Mode: Full-Stack Unified Production
+  ==============================================================
+    `);
+  });
+} else {
+  // Local development on macOS (avoids AirPlay 5000 conflict via explicit loopback)
+  const serverIPv4 = http.createServer(app);
+  serverIPv4.listen(PORT, '127.0.0.1', () => {
+    console.log(`
   ==============================================================
   🚀 StockSense AI — Backend Server Active
   📡 URL: http://localhost:${PORT} or http://127.0.0.1:${PORT}
@@ -287,11 +324,12 @@ serverIPv4.listen(PORT, '127.0.0.1', () => {
      • POST /api/portfolio/reset
      • GET  /api/health
   ==============================================================
-  `);
-});
+    `);
+  });
 
-const serverIPv6 = http.createServer(app);
-serverIPv6.on('error', () => {
-  // Gracefully ignore if ::1 is already shared
-});
-serverIPv6.listen(PORT, '::1');
+  const serverIPv6 = http.createServer(app);
+  serverIPv6.on('error', () => {
+    // Gracefully ignore if ::1 is already shared
+  });
+  serverIPv6.listen(PORT, '::1');
+}
