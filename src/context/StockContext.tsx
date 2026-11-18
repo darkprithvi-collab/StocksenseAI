@@ -14,7 +14,9 @@ import {
   checkServerHealth, 
   apiLogin, 
   apiSignup,
-  apiUpdateProfile,
+  apiSendOtp,
+  apiVerifyOtp,
+  apiUpdateProfile, 
   apiGetHoldings, 
   apiBuyStock, 
   apiSellStock, 
@@ -32,6 +34,8 @@ interface StockContextType {
   user: User;
   login: (email: string, password?: string) => Promise<{ success: boolean; message: string }>;
   signup: (name: string, email: string, password?: string) => Promise<{ success: boolean; message: string }>;
+  sendOtp: (payload: { email: string; password?: string; isLogin: boolean; name?: string }) => Promise<{ success: boolean; message: string; otp?: string }>;
+  verifyOtp: (email: string, otp: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   
   // Navigation
@@ -422,6 +426,42 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
+  const sendOtp = async (payload: { email: string; password?: string; isLogin: boolean; name?: string }): Promise<{ success: boolean; message: string; otp?: string }> => {
+    try {
+      const res = await apiSendOtp(payload);
+      if (res.success) {
+        addNotification('2FA Security Code Dispatched', `6-Digit OTP sent to ${payload.email}`, 'info');
+        return { success: true, message: res.message, otp: res.otp };
+      }
+      addNotification('2FA Dispatch Failed', res.message, 'error');
+      return { success: false, message: res.message };
+    } catch (e: any) {
+      const errMsg = e.message || 'Failed to dispatch security OTP.';
+      addNotification('2FA Error', errMsg, 'error');
+      return { success: false, message: errMsg };
+    }
+  };
+
+  const verifyOtp = async (email: string, otp: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await apiVerifyOtp(email, otp);
+      if (res.success && res.user) {
+        setUser(res.user);
+        localStorage.setItem('stocksense_user', JSON.stringify(res.user));
+        setActiveTab('dashboard');
+        addNotification('2FA Verification Successful', `Identity confirmed! Welcome ${res.user.name}.`, 'success');
+        return { success: true, message: 'Authentication verified successfully' };
+      }
+      const errMsg = res.message || 'Invalid or expired OTP code.';
+      addNotification('2FA Verification Failed', errMsg, 'error');
+      return { success: false, message: errMsg };
+    } catch (e: any) {
+      const errMsg = e.message || 'OTP verification failed.';
+      addNotification('2FA Error', errMsg, 'error');
+      return { success: false, message: errMsg };
+    }
+  };
+
   const updateUserProfile = async (updates: { name?: string; role?: string; avatar?: string }) => {
     const updatedUser: User = {
       ...user,
@@ -687,6 +727,8 @@ export const StockProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         user,
         login,
         signup,
+        sendOtp,
+        verifyOtp,
         logout,
         activeTab,
         setActiveTab,

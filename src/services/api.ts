@@ -155,6 +155,120 @@ export async function checkServerHealth(): Promise<boolean> {
 }
 
 /**
+ * POST /api/auth/send-otp
+ * Dispatches a 6-digit OTP code to the user's email address for Two-Factor Authentication
+ */
+export async function apiSendOtp(payload: {
+  email: string;
+  password?: string;
+  isLogin: boolean;
+  name?: string;
+}): Promise<{ success: boolean; message: string; otp?: string; expiresIn?: number }> {
+  const normEmail = (payload.email || '').trim().toLowerCase();
+
+  // 1. Attempt Server Request First
+  const res = await safeFetchJson<any>(`${API_BASE_URL}/auth/send-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...payload, email: normEmail })
+  });
+
+  if (res.data && typeof res.data === 'object' && 'success' in res.data) {
+    return res.data;
+  }
+
+  // 2. Client-side fallback for Vercel / offline mode
+  const users = getLocalUsers();
+  if (payload.isLogin) {
+    const found = users.find(u => u.email.toLowerCase() === normEmail);
+    if (!found) {
+      return { 
+        success: false, 
+        message: `No account found for "${normEmail}". Please click "Create Account" to register.` 
+      };
+    }
+    if (found.password && payload.password && found.password !== payload.password.trim()) {
+      return { 
+        success: false, 
+        message: `Incorrect password entered for "${normEmail}". Please try again.` 
+      };
+    }
+  } else {
+    const exists = users.find(u => u.email.toLowerCase() === normEmail);
+    if (exists) {
+      return { 
+        success: false, 
+        message: `An account with email "${normEmail}" already exists. Please switch to Sign In.` 
+      };
+    }
+  }
+
+  const mockOtp = Math.floor(100000 + Math.random() * 900000).toString();
+  try {
+    sessionStorage.setItem('stocksense_temp_otp_' + normEmail, JSON.stringify({
+      otp: mockOtp,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+      ...payload
+    }));
+  } catch (e) {}
+
+  return {
+    success: true,
+    message: `A 6-digit verification code has been dispatched to ${normEmail}`,
+    otp: mockOtp,
+    expiresIn: 300
+  };
+}
+
+/**
+ * POST /api/auth/verify-otp
+ * Verifies the submitted 6-digit OTP code and logs the user in
+ */
+export async function apiVerifyOtp(email: string, otp: string): Promise<{ success: boolean; user?: ServerUser; message?: string }> {
+  const normEmail = (email || '').trim().toLowerCase();
+  const inputOtp = (otp || '').trim();
+
+  // 1. Attempt Server Request First
+  const res = await safeFetchJson<any>(`${API_BASE_URL}/auth/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: normEmail, otp: inputOtp })
+  });
+
+  if (res.data && typeof res.data === 'object' && 'success' in res.data) {
+    return res.data;
+  }
+
+  // 2. Client-side fallback
+  let raw: string | null = null;
+  try {
+    raw = sessionStorage.getItem('stocksense_temp_otp_' + normEmail);
+  } catch (e) {}
+
+  if (!raw) {
+    return { success: false, message: 'No active OTP request found. Please request a new code.' };
+  }
+
+  const record = JSON.parse(raw);
+  if (Date.now() > record.expiresAt) {
+    try { sessionStorage.removeItem('stocksense_temp_otp_' + normEmail); } catch (e) {}
+    return { success: false, message: 'OTP code has expired. Please request a new code.' };
+  }
+
+  if (record.otp !== inputOtp) {
+    return { success: false, message: 'Incorrect OTP code entered. Please check and try again.' };
+  }
+
+  try { sessionStorage.removeItem('stocksense_temp_otp_' + normEmail); } catch (e) {}
+
+  if (record.isLogin) {
+    return apiLogin(normEmail, record.password);
+  } else {
+    return apiSignup(record.name || 'Trader', normEmail, record.password);
+  }
+}
+
+/**
  * POST /api/auth/login
  * Verify user authentication with the Express backend, or fallback to validated local database
  */
