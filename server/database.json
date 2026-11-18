@@ -1,0 +1,72 @@
+{
+  "users": [
+    {
+      "id": "usr_alex_vance",
+      "name": "Alex Vance",
+      "email": "alex.vance@stocksense.ai",
+      "password": "password123",
+      "role": "Lead Quantitative Researcher",
+      "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
+      "token": "stocksense_jwt_secure_session_token_2026",
+      "createdAt": "2026-11-04T10:00:00.000Z"
+    },
+    {
+      "id": "usr_1794637278214",
+      "name": "Prithviraj",
+      "email": "darkprithvi@gmail.com",
+      "password": "password123",
+      "role": "Quantitative Analyst & Portfolio Manager",
+      "avatar": "https://ui-avatars.com/api/?name=Prithviraj&background=3b82f6&color=fff&bold=true",
+      "token": "token_1794898154357_nt3wcu8",
+      "createdAt": "2026-11-14T06:21:18.215Z"
+    }
+  ],
+  "portfolio": {
+    "cash": 9722.42,
+    "startingCash": 10000,
+    "holdings": [
+      {
+        "symbol": "NVDA",
+        "name": "NVIDIA Corporation",
+        "shares": 2,
+        "avgBuyPrice": 138.79,
+        "sector": "Semiconductors & AI"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "tx-1",
+        "symbol": "NVDA",
+        "name": "NVIDIA Corporation",
+        "type": "BUY",
+        "shares": 15,
+        "price": 124.5,
+        "total": 1867.5,
+        "timestamp": "2026-11-02 10:14:32"
+      },
+      {
+        "id": "tx-2",
+        "symbol": "AAPL",
+        "name": "Apple Inc.",
+        "type": "BUY",
+        "shares": 20,
+        "price": 215,
+        "total": 4300,
+        "timestamp": "2026-11-02 11:35:10"
+      }
+    ]
+  },
+  "watchlist": [
+    "NVDA",
+    "AAPL",
+    "RELIANCE",
+    "MSFT",
+    "GOOGL"
+  ],
+  "meta": {
+    "system": "StockSense AI Ledger Engine",
+    "version": "1.0.0",
+    "storage": "Local JSON Ledger",
+    "lastUpdated": "2026-11-17T06:49:14.357Z"
+  }
+}
